@@ -1,0 +1,1 @@
+web: gunicorn gymlog_project.wsgi
