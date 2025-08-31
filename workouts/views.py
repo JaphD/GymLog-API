@@ -101,13 +101,18 @@ class AnalyticsGenerateView(APIView):
         )['duration'] or 0
         
         # Simple placeholder for calories burned
-        total_calories_burned = workout_duration_minutes * 10
+        total_calories_burned = weekly_workouts.aggregate(
+            calories=Sum(
+                F('workout_duration_minutes') * F('category__met_value') * 3.5 * F('user__userprofile__weight') / 200
+            )
+        )['calories'] or 0
         
         strength_level = 'Beginner'
-        if total_volume > 5000:
-            strength_level = 'Intermediate'
-        elif total_volume > 10000:
+        if total_volume > 10000:
             strength_level = 'Advanced'
+        elif total_volume > 5000:
+            strength_level = 'Intermediate'
+        
         
         # Prepare the data to be saved or returned
         analytics_data = {
