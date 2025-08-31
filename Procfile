@@ -1,1 +1,1 @@
-web: gunicorn gymlog_project.wsgi
+web: gunicorn GymLog.wsgi
