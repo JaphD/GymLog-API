@@ -32,6 +32,11 @@ class UserProfile(AbstractUser):
 
     profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
 
+    # The AbstractUser email field is not unique by default, so I make it unique here
+    email = models.EmailField(unique=True)
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username'] # Keep username as a required field for user creation
+
     def __str__(self):
         return self.username
 
