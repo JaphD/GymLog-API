@@ -6,9 +6,12 @@ from .models import Workout, Category, Analytics
 from rest_framework.views import APIView
 from datetime import date, timedelta
 from django.db.models import Sum, Max, F
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import WorkoutSerializer, CategorySerializer, AnalyticsSerializer
+from django_filters.rest_framework import DjangoFilterBackend
+from .filters import WorkoutFilter
 
 # Category Views 
 class CategoryListCreateView(generics.ListCreateAPIView):
@@ -35,6 +38,9 @@ class WorkoutListCreateView(generics.ListCreateAPIView):
     serializer_class = WorkoutSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+    pagination_class = PageNumberPagination 
+    filter_backends = [DjangoFilterBackend]  # Add this line
+    filterset_class = WorkoutFilter
 
     def get_queryset(self):
         """

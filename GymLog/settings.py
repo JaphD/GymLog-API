@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework', # For DRF
     'rest_framework_simplejwt', # For JWT authentication
+    'django_filters', # For filtering support in DRF
     'users',
     'workouts',
 ]
@@ -112,6 +113,9 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
+
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10, # Number of items per page
 
     'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.JSONParser',
