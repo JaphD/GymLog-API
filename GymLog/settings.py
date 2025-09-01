@@ -27,7 +27,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-9s8*nag@*ml%#e
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', '') != 'True'
 
-ALLOWED_HOSTS = ['*'] # Update to ['my-app.herokuapp.com'] in production
+ALLOWED_HOSTS = ['gymlog-api-c3067a3c49cf.herokuapp.com'] # Update to ['my-app.herokuapp.com'] in production
 
 # Only send cookies over a secure connection
 SESSION_COOKIE_SECURE = True
@@ -65,6 +65,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
