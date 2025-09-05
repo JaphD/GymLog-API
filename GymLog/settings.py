@@ -11,23 +11,23 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-import os
-import dj_database_url
+from datetime import timedelta
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-9s8*nag@*ml%#e-4=8sbsjv%of0y@nx)l!#b_3t8)!+38$2t_)')
+SECRET_KEY = 'django-insecure-9s8*nag@*ml%#e-4=8sbsjv%of0y@nx)l!#b_3t8)!+38$2t_)'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', '') != 'True'
+DEBUG = True
 
-ALLOWED_HOSTS = ['gymlog-api-c3067a3c49cf.herokuapp.com'] # Update to ['my-app.herokuapp.com'] in production
+ALLOWED_HOSTS = ['gymlog-api-c3067a3c49cf.herokuapp.com', 'localhost', '127.0.0.1' ] # Work in progress, will update properly later
 
 # Only send cookies over a secure connection
 SESSION_COOKIE_SECURE = True
@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework', # For DRF
     'rest_framework_simplejwt', # For JWT authentication
+    'rest_framework_simplejwt.token_blacklist', # For blacklisting tokens
     'django_filters', # For filtering support in DRF
     'users',
     'workouts',
@@ -66,7 +67,7 @@ ROOT_URLCONF = 'GymLog.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -85,10 +86,14 @@ WSGI_APPLICATION = 'GymLog.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default='mysql://root@localhost:3306/gymlog_project', # Fallback for local dev
-        conn_max_age=600
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'gymlog_project',  # Replace with your DB name
+        'USER': 'root',               # Or your MySQL username
+        'PASSWORD': '1653362374@jd23',  # Set your MySQL password
+        'HOST': 'localhost',          # Or the host for your DB
+        'PORT': '3306',               # Default MySQL port
+    }
 }
 
 
@@ -112,18 +117,23 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Tells DRF to use JWT for all API endpoints by default
 REST_FRAMEWORK = {
+
+    # Response formats: JSON + browsable API UI
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ],
 
+    # Use JWT Authentication by default
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
 
+    # Pagination: 10 items per page
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10, # Number of items per page
 
+    # Request parsers: JSON, form data, file uploads
     'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.JSONParser',
         'rest_framework.parsers.FormParser',
@@ -131,12 +141,23 @@ REST_FRAMEWORK = {
     ]
 }
 
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=2), 
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7), 
+    'ROTATE_REFRESH_TOKENS': False,  # Don't issue new refresh tokens on refresh
+    'BLACKLIST_AFTER_ROTATION': True,  # Blacklist used refresh tokens
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
 AUTH_USER_MODEL = 'users.UserProfile'
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',  # default
+]
 
 # Tell Django where to upload uploaded media
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -154,7 +175,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 

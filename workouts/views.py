@@ -37,9 +37,10 @@ class WorkoutListCreateView(generics.ListCreateAPIView):
     """
     serializer_class = WorkoutSerializer
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    parser_classes = [MultiPartParser, FormParser] # Allow image uploads
+
     pagination_class = PageNumberPagination 
-    filter_backends = [DjangoFilterBackend]  # Add this line
+    filter_backends = [DjangoFilterBackend]  # Enable query filtering
     filterset_class = WorkoutFilter
 
     def get_queryset(self):
@@ -61,7 +62,7 @@ class WorkoutDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Workout.objects.all()
     serializer_class = WorkoutSerializer
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):
         """
@@ -71,77 +72,82 @@ class WorkoutDetailView(generics.RetrieveUpdateDestroyAPIView):
         
     
 class AnalyticsGenerateView(APIView):
-    """
-    Generate and retrieve weekly analytics for the authenticated user.
-    """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         user = request.user
         today = date.today()
-        week_start_date = today - timedelta(days=today.weekday())
+        week_start_date = today - timedelta(days=today.weekday()) # Get Monday of current week
 
-        # Aggregate all workouts for the current week
-        weekly_workouts = Workout.objects.filter(
-            user=user,
-            date__gte=week_start_date
-        )
+        # Filter workouts for this user and week
 
-        # Calculate metrics using Django's ORM
-        total_volume = weekly_workouts.aggregate(
+        weekly_workouts = Workout.objects.filter(user=user, date__gte=week_start_date)
+
+        if not weekly_workouts.exists():
+            return Response({"detail": "No workouts found for this week."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Separate workouts by category for targeted metrics
+
+        strength_workouts = weekly_workouts.filter(category__name="Strength Training")
+        cardio_workouts = weekly_workouts.filter(category__name="Cardiovascular Training")
+
+        # Compute total volume: sum of (weight × reps × sets)
+
+        total_volume = strength_workouts.aggregate(
             volume=Sum(F('weight_used') * F('reps') * F('sets'))
         )['volume'] or 0
 
-        max_lift = weekly_workouts.aggregate(
-            lift=Max('weight_used')
-        )['lift'] or 0
+        # Find max lift from strength workouts
 
-        workout_duration_minutes = weekly_workouts.aggregate(
+        max_lift = strength_workouts.aggregate(lift=Max('weight_used'))['lift'] or 0
+
+        # Total workout duration across all workouts
+
+        weekly_workout_duration_minutes = weekly_workouts.aggregate(
             duration=Sum('workout_duration_minutes')
         )['duration'] or 0
         
-        # Simple placeholder for calories burned
-        total_calories_burned = weekly_workouts.aggregate(
-            calories=Sum(
-                F('workout_duration_minutes') * F('category__met_value') * 3.5 * F('user__userprofile__weight') / 200
-            )
-        )['calories'] or 0
-        
-        strength_level = 'Beginner'
-        if total_volume > 10000:
-            strength_level = 'Advanced'
-        elif total_volume > 5000:
-            strength_level = 'Intermediate'
-        
-        
-        # Prepare the data to be saved or returned
+        # Estimate calories burned using MET formula
+
+        total_calories = 0
+        user_weight = float(user.weight) if user.weight else 70.0 # Default to 70kg if not set
+
+        for w in weekly_workouts:
+            met = 6.0 if w.category.name == "Strength Training" else 7.0
+            total_calories += met * 3.5 * user_weight / 200 * w.workout_duration_minutes
+
+        # Compute average intensity 
+
+        intensity = total_volume / weekly_workout_duration_minutes if weekly_workout_duration_minutes > 0 else 0
+
+        # Determine strength level based on max lift vs body weight
+
+        strength_level = "Beginner"
+        if max_lift >= 1.5 * user_weight:
+            strength_level = "Advanced"
+        elif max_lift >= 1.0 * user_weight:
+            strength_level = "Intermediate"
+
+        # Prepare analytics data
         analytics_data = {
-            'user': user.id,
             'week_start_date': week_start_date,
             'total_volume': total_volume,
             'max_lift': max_lift,
+            'average_intensity': round(intensity, 2),
             'strength_level': strength_level,
-            'total_calories_burned': total_calories_burned,
-            'workout_duration_minutes': workout_duration_minutes,
+            'total_calories_burned': round(total_calories, 2),
+            'weekly_workout_duration_minutes': weekly_workout_duration_minutes
         }
 
-        # Check if an analytics record for the week already exists
-        # If it does, update it; otherwise, return the data without saving
-        try:
-           analytics_record, _ = Analytics.objects.update_or_create(
+        # Create or update analytics record for the week
+
+        analytics_record, _ = Analytics.objects.update_or_create(
             user=user,
             week_start_date=week_start_date,
-            defaults={
-                'total_volume': total_volume,
-                'max_lift': max_lift,
-                'strength_level': strength_level,
-                'total_calories_burned': total_calories_burned,
-                'workout_duration_minutes': workout_duration_minutes,
-            }
+            defaults=analytics_data
         )
-        except Analytics.DoesNotExist:
-            serializer = AnalyticsSerializer(data=analytics_data)
-            serializer.is_valid(raise_exception=True)
-        
+
+        # Return serialized analytics
+
         serializer = AnalyticsSerializer(analytics_record)
         return Response(serializer.data, status=status.HTTP_200_OK)

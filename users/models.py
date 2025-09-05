@@ -4,7 +4,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from datetime import date
 
 class UserProfile(AbstractUser):
-    # Extra fields
+    
     height = models.DecimalField(
         max_digits=5,
         decimal_places=2,
